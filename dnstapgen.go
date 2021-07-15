@@ -74,7 +74,7 @@ func GenerateDnstap(dt *dnstap.Dnstap, dnspayload []byte) {
 }
 
 func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket *int) {
-	//	defer wg.Done()
+	defer wg.Done()
 
 	// connect
 	remoteAddr := fmt.Sprintf("%s:%d", *remoteIp, *remotePort)
@@ -100,54 +100,14 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 			for i := 1; i <= *numPacket; i++ {
 
 				// generate dns message
-				//dnspayload, err := GenerateDnsQuestion()
-				//if err != nil {
-				//		log.Fatalf("dns pack error %s", err)
-				//	}
-
-				// generate dnstap message
-				//	GenerateDnstap(dt, dnspayload)
-
-				dt.Reset()
-
-				dnsmsg := new(dns.Msg)
-				domain := RandomString(60)
-				fqdn := fmt.Sprintf("%s.org.", domain)
-				dnsmsg.SetQuestion(fqdn, dns.TypeA)
-				dnspayload, err := dnsmsg.Pack()
+				dnspayload, err := GenerateDnsQuestion()
 				if err != nil {
 					log.Fatalf("dns pack error %s", err)
 				}
 
-				t := dnstap.Dnstap_MESSAGE
-				dt.Identity = []byte("dnstap-generator")
-				dt.Version = []byte("-")
-				dt.Type = &t
+				// generate dnstap message
+				GenerateDnstap(dt, dnspayload)
 
-				now := time.Now()
-				mt := dnstap.Message_CLIENT_QUERY
-				sf := dnstap.SocketFamily_INET
-				sp := dnstap.SocketProtocol_UDP
-				tsec := uint64(now.Second())
-				tnsec := uint32(0)
-				rport := uint32(1)
-				qport := uint32(2)
-				queryIp := "127.0.0.1"
-				responseIp := "127.0.0.2"
-				msg := &dnstap.Message{Type: &mt}
-
-				msg.SocketFamily = &sf
-				msg.SocketProtocol = &sp
-				msg.QueryAddress = net.ParseIP(queryIp)
-				msg.QueryPort = &qport
-				msg.ResponseAddress = net.ParseIP(responseIp)
-				msg.ResponsePort = &rport
-
-				msg.QueryMessage = dnspayload
-				msg.QueryTimeSec = &tsec
-				msg.QueryTimeNsec = &tnsec
-
-				dt.Message = msg
 				// serialize to byte
 				data, err := proto.Marshal(dt)
 				if err != nil {
@@ -168,7 +128,6 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 		conn.Close()
 		fmt.Println("closed")
 	}
-	wg.Done()
 }
 func main() {
 
