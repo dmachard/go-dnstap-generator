@@ -28,6 +28,13 @@ var SP = map[int]dnstap.SocketProtocol{
 	3: dnstap.SocketProtocol_DOT,
 }
 
+var TLD = map[int]string{
+	0: "com",
+	1: "org",
+	2: "fr",
+	3: "eu",
+}
+
 func RandomInt(min int, max int) int {
 	return (rand.Intn(max-min+1) + min)
 }
@@ -45,7 +52,7 @@ func RandomString(n int) string {
 func GenerateDnsQuestion() ([]byte, []byte) {
 	dnsmsg := new(dns.Msg)
 	domain := RandomString(2)
-	fqdn := fmt.Sprintf("%s.org.", domain)
+	fqdn := fmt.Sprintf("%s.%s.", domain, TLD[RandomInt(0, 3)])
 	dnsmsg.SetQuestion(fqdn, dns.TypeA)
 
 	dnsquestion, err := dnsmsg.Pack()
