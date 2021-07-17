@@ -16,6 +16,18 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var SF = map[int]dnstap.SocketFamily{
+	0: dnstap.SocketFamily_INET,
+	1: dnstap.SocketFamily_INET6,
+}
+
+var SP = map[int]dnstap.SocketProtocol{
+	0: dnstap.SocketProtocol_UDP,
+	1: dnstap.SocketProtocol_TCP,
+	2: dnstap.SocketProtocol_DOH,
+	3: dnstap.SocketProtocol_DOT,
+}
+
 func RandomInt(min int, max int) int {
 	return (rand.Intn(max-min+1) + min)
 }
@@ -30,15 +42,30 @@ func RandomString(n int) string {
 	return string(s)
 }
 
-func GenerateDnsQuestion() ([]byte, error) {
+func GenerateDnsQuestion() ([]byte, []byte) {
 	dnsmsg := new(dns.Msg)
-	domain := RandomString(60)
+	domain := RandomString(2)
 	fqdn := fmt.Sprintf("%s.org.", domain)
 	dnsmsg.SetQuestion(fqdn, dns.TypeA)
-	return dnsmsg.Pack()
+
+	dnsquestion, err := dnsmsg.Pack()
+	if err != nil {
+		log.Fatalf("dns question pack error %s", err)
+	}
+
+	rr, err := dns.NewRR(fmt.Sprintf("%s A 127.0.0.1", fqdn))
+	if err == nil {
+		dnsmsg.Answer = append(dnsmsg.Answer, rr)
+	}
+	dnsanswer, err := dnsmsg.Pack()
+	if err != nil {
+		log.Fatalf("dns answer pack error %s", err)
+	}
+
+	return dnsquestion, dnsanswer
 }
 
-func GenerateDnstap(dt *dnstap.Dnstap, dnspayload []byte) {
+func GenerateDnstap(dt *dnstap.Dnstap) {
 
 	dt.Reset()
 
@@ -49,16 +76,17 @@ func GenerateDnstap(dt *dnstap.Dnstap, dnspayload []byte) {
 
 	now := time.Now()
 	mt := dnstap.Message_CLIENT_QUERY
-	sf := dnstap.SocketFamily_INET
-	sp := dnstap.SocketProtocol_UDP
+	sf := SF[RandomInt(0, 1)]
+	sp := SP[RandomInt(0, 3)]
+
 	tsec := uint64(now.Second())
 	tnsec := uint32(0)
 	rport := uint32(1)
 	qport := uint32(2)
 	queryIp := "127.0.0.1"
 	responseIp := "127.0.0.2"
-	msg := &dnstap.Message{Type: &mt}
 
+	msg := &dnstap.Message{Type: &mt}
 	msg.SocketFamily = &sf
 	msg.SocketProtocol = &sp
 	msg.QueryAddress = net.ParseIP(queryIp)
@@ -66,7 +94,6 @@ func GenerateDnstap(dt *dnstap.Dnstap, dnspayload []byte) {
 	msg.ResponseAddress = net.ParseIP(responseIp)
 	msg.ResponsePort = &rport
 
-	msg.QueryMessage = dnspayload
 	msg.QueryTimeSec = &tsec
 	msg.QueryTimeNsec = &tnsec
 
@@ -100,13 +127,14 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 			for i := 1; i <= *numPacket; i++ {
 
 				// generate dns message
-				dnspayload, err := GenerateDnsQuestion()
+				dnsquery, _ := GenerateDnsQuestion()
 				if err != nil {
 					log.Fatalf("dns pack error %s", err)
 				}
 
 				// generate dnstap message
-				GenerateDnstap(dt, dnspayload)
+				GenerateDnstap(dt)
+				dt.Message.QueryMessage = dnsquery
 
 				// serialize to byte
 				data, err := proto.Marshal(dt)
