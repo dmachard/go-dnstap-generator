@@ -35,6 +35,20 @@ var TLD = map[int]string{
 	3: "eu",
 }
 
+var DNSTYPE = map[int]uint16{
+	0: dns.TypeA,
+	1: dns.TypeAAAA,
+	2: dns.TypeTXT,
+	3: dns.TypeCNAME,
+}
+
+var DNSTYPE_STR = map[uint16]string{
+	dns.TypeA:     "A",
+	dns.TypeAAAA:  "AAAA",
+	dns.TypeTXT:   "TXT",
+	dns.TypeCNAME: "CNAME",
+}
+
 func RandomInt(min int, max int) int {
 	return (rand.Intn(max-min+1) + min)
 }
@@ -51,16 +65,20 @@ func RandomString(n int) string {
 
 func GenerateDnsQuestion() ([]byte, []byte) {
 	dnsmsg := new(dns.Msg)
+
 	domain := RandomString(2)
+	qtype := DNSTYPE[RandomInt(0, 3)]
+
 	fqdn := fmt.Sprintf("%s.%s.", domain, TLD[RandomInt(0, 3)])
-	dnsmsg.SetQuestion(fqdn, dns.TypeA)
+
+	dnsmsg.SetQuestion(fqdn, qtype)
 
 	dnsquestion, err := dnsmsg.Pack()
 	if err != nil {
 		log.Fatalf("dns question pack error %s", err)
 	}
 
-	rr, err := dns.NewRR(fmt.Sprintf("%s A 127.0.0.1", fqdn))
+	rr, err := dns.NewRR(fmt.Sprintf("%s %s 127.0.0.1", fqdn, DNSTYPE_STR[qtype]))
 	if err == nil {
 		dnsmsg.Answer = append(dnsmsg.Answer, rr)
 	}
@@ -72,14 +90,15 @@ func GenerateDnsQuestion() ([]byte, []byte) {
 	return dnsquestion, dnsanswer
 }
 
-func GenerateDnstap(dt *dnstap.Dnstap) {
+func GenerateDnstap(dnsquery []byte) *dnstap.Dnstap {
 
-	dt.Reset()
+	//prepare dnstap query
+	dt_query := &dnstap.Dnstap{}
 
 	t := dnstap.Dnstap_MESSAGE
-	dt.Identity = []byte("dnstap-generator")
-	dt.Version = []byte("-")
-	dt.Type = &t
+	dt_query.Identity = []byte("dnstap-generator")
+	dt_query.Version = []byte("-")
+	dt_query.Type = &t
 
 	now := time.Now()
 	mt := dnstap.Message_CLIENT_QUERY
@@ -101,10 +120,15 @@ func GenerateDnstap(dt *dnstap.Dnstap) {
 	msg.ResponseAddress = net.ParseIP(responseIp)
 	msg.ResponsePort = &rport
 
+	msg.QueryMessage = dnsquery
 	msg.QueryTimeSec = &tsec
 	msg.QueryTimeNsec = &tnsec
 
-	dt.Message = msg
+	dt_query.Message = msg
+
+	//prepare dnstap reply
+
+	return dt_query
 }
 
 func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket *int) {
@@ -128,7 +152,6 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 		} else {
 			fmt.Println("framestream init success")
 
-			dt := &dnstap.Dnstap{}
 			frame := &framestream.Frame{}
 
 			for i := 1; i <= *numPacket; i++ {
@@ -140,8 +163,7 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 				}
 
 				// generate dnstap message
-				GenerateDnstap(dt)
-				dt.Message.QueryMessage = dnsquery
+				dt := GenerateDnstap(dnsquery)
 
 				// serialize to byte
 				data, err := proto.Marshal(dt)
