@@ -113,8 +113,9 @@ func GenerateDnstap(dnsquery []byte) *dnstap.Dnstap {
 
 	tsec := uint64(now.Second())
 	tnsec := uint32(0)
-	rport := uint32(1)
-	qport := uint32(2)
+
+	rport := uint32(53)
+	qport := uint32(RandomInt(10000, 60000))
 
 	var queryIp string
 	var responseIp string
