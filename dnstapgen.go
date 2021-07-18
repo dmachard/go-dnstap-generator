@@ -111,8 +111,8 @@ func GenerateDnstap(dnsquery []byte) *dnstap.Dnstap {
 	sf := SF[RandomInt(0, 1)]
 	sp := SP[RandomInt(0, 3)]
 
-	tsec := uint64(now.Second())
-	tnsec := uint32(0)
+	tsec := uint64(now.Unix())
+	tnsec := uint32(uint64(now.UnixNano()) - uint64(now.Unix())*1e9)
 
 	rport := uint32(53)
 	qport := uint32(RandomInt(10000, 60000))
@@ -142,6 +142,14 @@ func GenerateDnstap(dnsquery []byte) *dnstap.Dnstap {
 	dt_query.Message = msg
 
 	//prepare dnstap reply
+	//dt_reply := &dnstap.Dnstap{}
+
+	//dt_reply.Identity = []byte("dnstap-generator")
+	//dt_reply.Version = []byte("-")
+	//dt_reply.Type = &t
+
+	//now_reply := time.Now()
+	//mt_reply := dnstap.Message_CLIENT_RESPONSE
 
 	return dt_query
 }
