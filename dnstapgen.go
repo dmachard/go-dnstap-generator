@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -51,6 +52,11 @@ var DNSTYPE_STR = map[uint16]string{
 
 func RandomInt(min int, max int) int {
 	return (rand.Intn(max-min+1) + min)
+}
+
+func RandomItoa(min int, max int) string {
+	num := (rand.Intn(max-min+1) + min)
+	return strconv.Itoa(num)
 }
 
 func RandomString(n int) string {
@@ -109,8 +115,16 @@ func GenerateDnstap(dnsquery []byte) *dnstap.Dnstap {
 	tnsec := uint32(0)
 	rport := uint32(1)
 	qport := uint32(2)
-	queryIp := "127.0.0.1"
-	responseIp := "127.0.0.2"
+
+	var queryIp string
+	var responseIp string
+	if sf == dnstap.SocketFamily_INET {
+		queryIp = "127.0." + RandomItoa(1, 250) + "." + RandomItoa(1, 250)
+		responseIp = "127.0." + RandomItoa(1, 250) + "." + RandomItoa(1, 250)
+	} else {
+		queryIp = "2001:" + RandomItoa(1, 250) + "::" + RandomItoa(1, 250)
+		responseIp = "2001:" + RandomItoa(1, 250) + "::" + RandomItoa(1, 250)
+	}
 
 	msg := &dnstap.Message{Type: &mt}
 	msg.SocketFamily = &sf
