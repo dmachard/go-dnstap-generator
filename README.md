@@ -1,8 +1,6 @@
 # go-dnstap-generator
 
-Dnstap generator
-
-Usage:
+Dnstap generator for testing purpose only.
 
 ```
 Usage of go-dnstap-generator
