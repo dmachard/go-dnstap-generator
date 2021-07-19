@@ -5,7 +5,7 @@ Dnstap generator for testing purpose only.
 Command:
 
 ```
-./dnstapgen -c 2 -n 1000000 -i 127.0.0.1
+./go-dnstap-generator -c 2 -n 1000000 -i 127.0.0.1
 ```
 
 Options:
