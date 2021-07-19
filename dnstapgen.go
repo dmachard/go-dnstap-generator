@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -50,6 +51,13 @@ var DNSTYPE_STR = map[uint16]string{
 	dns.TypeCNAME: "CNAME",
 }
 
+var DNSTYPE_VAL = map[uint16]string{
+	dns.TypeA:     "127.0.0.1",
+	dns.TypeAAAA:  "::1",
+	dns.TypeTXT:   "dnstapgenerator",
+	dns.TypeCNAME: "generator.dnstap",
+}
+
 var DTYPEQR = map[int]dnstap.Message_Type{
 	0: dnstap.Message_CLIENT_QUERY,
 	1: dnstap.Message_FORWARDER_QUERY,
@@ -83,7 +91,7 @@ func RandomString(n int) string {
 	return string(s)
 }
 
-func GenerateDnsQuestion(domainLength *int) ([]byte, []byte) {
+func GenerateDnsQuestion(domainLength *int) ([]byte, []byte, error) {
 	dnsmsg := new(dns.Msg)
 
 	domain := RandomString(*domainLength)
@@ -95,19 +103,19 @@ func GenerateDnsQuestion(domainLength *int) ([]byte, []byte) {
 
 	dnsquestion, err := dnsmsg.Pack()
 	if err != nil {
-		log.Fatalf("dns question pack error %s", err)
+		return nil, nil, errors.New("dns question pack error")
 	}
 
-	rr, err := dns.NewRR(fmt.Sprintf("%s %s 127.0.0.1", fqdn, DNSTYPE_STR[qtype]))
+	rr, err := dns.NewRR(fmt.Sprintf("%s %s %s", fqdn, DNSTYPE_STR[qtype], DNSTYPE_VAL[qtype]))
 	if err == nil {
 		dnsmsg.Answer = append(dnsmsg.Answer, rr)
 	}
 	dnsanswer, err := dnsmsg.Pack()
 	if err != nil {
-		log.Fatalf("dns answer pack error %s", err)
+		return nil, nil, errors.New("dns answer pack error")
 	}
 
-	return dnsquestion, dnsanswer
+	return dnsquestion, dnsanswer, nil
 }
 
 func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.Dnstap) {
@@ -213,7 +221,7 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 			for i := 1; i <= *numPacket; i++ {
 
 				// generate dns message
-				dnsquery, dnsreply := GenerateDnsQuestion(domainLength)
+				dnsquery, dnsreply, err := GenerateDnsQuestion(domainLength)
 				if err != nil {
 					log.Fatalf("dns pack error %s", err)
 				}
@@ -254,6 +262,7 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 		fmt.Println("closed")
 	}
 }
+
 func main() {
 
 	rand.Seed(time.Now().UnixNano())

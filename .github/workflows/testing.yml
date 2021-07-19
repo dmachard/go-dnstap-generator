@@ -1,0 +1,25 @@
+name: Testing
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  testing:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+
+    - name: Test
+      run: go test -cover -v
+
+    - name: Bench
+      run: go test -bench .
+
+    - name: Bench with race detection
+      run: go test -race -bench .

@@ -2,12 +2,19 @@
 
 Dnstap generator for testing purpose only.
 
+Command:
+
 ```
-Usage of go-dnstap-generator
+./dnstapgen -c 2 -n 1000000 -i 127.0.0.1
+```
+
+Options:
+
+```
   -c int
         number of connection (default 1)
   -d int
-     domain length (default 60)
+        domain length (default 60)
   -i string
         remote address of the dnstap receiver (default "127.0.0.1")
   -n int
