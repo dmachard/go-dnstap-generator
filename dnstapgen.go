@@ -96,7 +96,7 @@ func GenerateDnsQuestion() ([]byte, []byte) {
 	return dnsquestion, dnsanswer
 }
 
-func GenerateDnstap(dnsquery []byte) *dnstap.Dnstap {
+func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.Dnstap) {
 
 	//prepare dnstap query
 	dt_query := &dnstap.Dnstap{}
@@ -142,16 +142,33 @@ func GenerateDnstap(dnsquery []byte) *dnstap.Dnstap {
 	dt_query.Message = msg
 
 	//prepare dnstap reply
-	//dt_reply := &dnstap.Dnstap{}
+	dt_reply := &dnstap.Dnstap{}
 
-	//dt_reply.Identity = []byte("dnstap-generator")
-	//dt_reply.Version = []byte("-")
-	//dt_reply.Type = &t
+	dt_reply.Identity = []byte("dnstap-generator")
+	dt_reply.Version = []byte("-")
+	dt_reply.Type = &t
 
-	//now_reply := time.Now()
-	//mt_reply := dnstap.Message_CLIENT_RESPONSE
+	now_reply := time.Now()
+	mt_reply := dnstap.Message_CLIENT_RESPONSE
 
-	return dt_query
+	tsec_reply := uint64(now_reply.Unix())
+	tnsec_reply := uint32(uint64(now_reply.UnixNano()) - uint64(now_reply.Unix())*1e9)
+
+	msg_reply := &dnstap.Message{Type: &mt_reply}
+	msg_reply.SocketFamily = &sf
+	msg_reply.SocketProtocol = &sp
+	msg_reply.QueryAddress = net.ParseIP(queryIp)
+	msg_reply.QueryPort = &qport
+	msg_reply.ResponseAddress = net.ParseIP(responseIp)
+	msg_reply.ResponsePort = &rport
+
+	msg_reply.QueryMessage = dnsreply
+	msg_reply.QueryTimeSec = &tsec_reply
+	msg_reply.QueryTimeNsec = &tnsec_reply
+
+	dt_reply.Message = msg_reply
+
+	return dt_query, dt_reply
 }
 
 func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket *int) {
@@ -180,16 +197,16 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 			for i := 1; i <= *numPacket; i++ {
 
 				// generate dns message
-				dnsquery, _ := GenerateDnsQuestion()
+				dnsquery, dnsreply := GenerateDnsQuestion()
 				if err != nil {
 					log.Fatalf("dns pack error %s", err)
 				}
 
 				// generate dnstap message
-				dt := GenerateDnstap(dnsquery)
+				_, dtreply := GenerateDnstap(dnsquery, dnsreply)
 
 				// serialize to byte
-				data, err := proto.Marshal(dt)
+				data, err := proto.Marshal(dtreply)
 				if err != nil {
 					log.Fatalf("dnstap proto marshal error %s", err)
 				}
@@ -199,6 +216,18 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 				if err := fs.SendFrame(frame); err != nil {
 					log.Fatalf("send frame error %s", err)
 				}
+
+				// serialize to byte
+				//data, err = proto.Marshal(dtreply)
+				//if err != nil {
+				//	log.Fatalf("dnstap proto marshal error %s", err)
+				//}
+
+				// send
+				//frame.Write(data)
+				//if err := fs.SendFrame(frame); err != nil {
+				//	log.Fatalf("send frame error %s", err)
+				//}
 
 			}
 
