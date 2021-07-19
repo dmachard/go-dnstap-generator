@@ -72,6 +72,13 @@ var DTYPERP = map[int]dnstap.Message_Type{
 	3: dnstap.Message_AUTH_RESPONSE,
 }
 
+var RCODES = map[int]int{
+	0: dns.RcodeSuccess,
+	1: dns.RcodeServerFailure,
+	2: dns.RcodeRefused,
+	3: dns.RcodeNameError, //nxdomain
+}
+
 func RandomInt(min int, max int) int {
 	return (rand.Intn(max-min+1) + min)
 }
@@ -110,6 +117,7 @@ func GenerateDnsQuestion(domainLength *int) ([]byte, []byte, error) {
 	if err == nil {
 		dnsmsg.Answer = append(dnsmsg.Answer, rr)
 	}
+	dnsmsg.Rcode = RCODES[RandomInt(0, 3)]
 	dnsanswer, err := dnsmsg.Pack()
 	if err != nil {
 		return nil, nil, errors.New("dns answer pack error")
