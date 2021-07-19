@@ -6,6 +6,8 @@ Dnstap generator for testing purpose only.
 Usage of go-dnstap-generator
   -c int
         number of connection (default 1)
+  -d int
+     domain length (default 60)
   -i string
         remote address of the dnstap receiver (default "127.0.0.1")
   -n int

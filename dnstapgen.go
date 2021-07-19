@@ -50,6 +50,20 @@ var DNSTYPE_STR = map[uint16]string{
 	dns.TypeCNAME: "CNAME",
 }
 
+var DTYPEQR = map[int]dnstap.Message_Type{
+	0: dnstap.Message_CLIENT_QUERY,
+	1: dnstap.Message_FORWARDER_QUERY,
+	2: dnstap.Message_RESOLVER_QUERY,
+	3: dnstap.Message_AUTH_QUERY,
+}
+
+var DTYPERP = map[int]dnstap.Message_Type{
+	0: dnstap.Message_CLIENT_RESPONSE,
+	1: dnstap.Message_FORWARDER_RESPONSE,
+	2: dnstap.Message_RESOLVER_RESPONSE,
+	3: dnstap.Message_AUTH_RESPONSE,
+}
+
 func RandomInt(min int, max int) int {
 	return (rand.Intn(max-min+1) + min)
 }
@@ -69,10 +83,10 @@ func RandomString(n int) string {
 	return string(s)
 }
 
-func GenerateDnsQuestion() ([]byte, []byte) {
+func GenerateDnsQuestion(domainLength *int) ([]byte, []byte) {
 	dnsmsg := new(dns.Msg)
 
-	domain := RandomString(2)
+	domain := RandomString(*domainLength)
 	qtype := DNSTYPE[RandomInt(0, 3)]
 
 	fqdn := fmt.Sprintf("%s.%s.", domain, TLD[RandomInt(0, 3)])
@@ -106,8 +120,10 @@ func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.D
 	dt_query.Version = []byte("-")
 	dt_query.Type = &t
 
+	mtId := RandomInt(0, 3)
+
 	now := time.Now()
-	mt := dnstap.Message_CLIENT_QUERY
+	mt := DTYPEQR[mtId]
 	sf := SF[RandomInt(0, 1)]
 	sp := SP[RandomInt(0, 3)]
 
@@ -149,7 +165,7 @@ func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.D
 	dt_reply.Type = &t
 
 	now_reply := time.Now()
-	mt_reply := dnstap.Message_CLIENT_RESPONSE
+	mt_reply := DTYPERP[mtId]
 
 	tsec_reply := uint64(now_reply.Unix())
 	tnsec_reply := uint32(uint64(now_reply.UnixNano()) - uint64(now_reply.Unix())*1e9)
@@ -162,16 +178,16 @@ func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.D
 	msg_reply.ResponseAddress = net.ParseIP(responseIp)
 	msg_reply.ResponsePort = &rport
 
-	msg_reply.QueryMessage = dnsreply
-	msg_reply.QueryTimeSec = &tsec_reply
-	msg_reply.QueryTimeNsec = &tnsec_reply
+	msg_reply.ResponseMessage = dnsreply
+	msg_reply.ResponseTimeSec = &tsec_reply
+	msg_reply.ResponseTimeNsec = &tnsec_reply
 
 	dt_reply.Message = msg_reply
 
 	return dt_query, dt_reply
 }
 
-func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket *int) {
+func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket *int, domainLength *int) {
 	defer wg.Done()
 
 	// connect
@@ -197,37 +213,37 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 			for i := 1; i <= *numPacket; i++ {
 
 				// generate dns message
-				dnsquery, dnsreply := GenerateDnsQuestion()
+				dnsquery, dnsreply := GenerateDnsQuestion(domainLength)
 				if err != nil {
 					log.Fatalf("dns pack error %s", err)
 				}
 
 				// generate dnstap message
-				_, dtreply := GenerateDnstap(dnsquery, dnsreply)
+				dtquery, dtreply := GenerateDnstap(dnsquery, dnsreply)
 
 				// serialize to byte
-				data, err := proto.Marshal(dtreply)
+				data, err := proto.Marshal(dtquery)
 				if err != nil {
 					log.Fatalf("dnstap proto marshal error %s", err)
 				}
 
-				// send
+				// send query
 				frame.Write(data)
 				if err := fs.SendFrame(frame); err != nil {
 					log.Fatalf("send frame error %s", err)
 				}
 
 				// serialize to byte
-				//data, err = proto.Marshal(dtreply)
-				//if err != nil {
-				//	log.Fatalf("dnstap proto marshal error %s", err)
-				//}
+				data, err = proto.Marshal(dtreply)
+				if err != nil {
+					log.Fatalf("dnstap proto marshal error %s", err)
+				}
 
-				// send
-				//frame.Write(data)
-				//if err := fs.SendFrame(frame); err != nil {
-				//	log.Fatalf("send frame error %s", err)
-				//}
+				// send reply
+				frame.Write(data)
+				if err := fs.SendFrame(frame); err != nil {
+					log.Fatalf("send frame error %s", err)
+				}
 
 			}
 
@@ -246,6 +262,7 @@ func main() {
 	var numConn = flag.Int("c", 1, "number of connection")
 	var remoteIp = flag.String("i", "127.0.0.1", "remote address of the dnstap receiver")
 	var remotePort = flag.Int("p", 6000, "remote port of the dnstap receiver")
+	var domainLength = flag.Int("d", 60, "domain length")
 
 	// Handle command-line arguments.
 	flag.Parse()
@@ -253,7 +270,7 @@ func main() {
 	var wg sync.WaitGroup
 	for i := 1; i <= *numConn; i++ {
 		wg.Add(1)
-		go Generator(&wg, remoteIp, remotePort, numPacket)
+		go Generator(&wg, remoteIp, remotePort, numPacket, domainLength)
 	}
 	wg.Wait()
 
