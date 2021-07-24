@@ -1,6 +1,6 @@
 # go-dnstap-generator
 
-Dnstap generator for testing purpose only.
+Dnstap random generator for testing purpose only.
 
 Command:
 
