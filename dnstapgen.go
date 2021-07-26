@@ -203,7 +203,7 @@ func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.D
 	return dt_query, dt_reply
 }
 
-func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket *int, domainLength *int) {
+func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket *int, domainLength *int, noQueries bool, noReplies bool) {
 	defer wg.Done()
 
 	// connect
@@ -223,10 +223,8 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 		} else {
 
 			frame := &framestream.Frame{}
-
 			count := 0
 			start := time.Now()
-
 			fmt.Println("Sending dnstap packet to remote", remoteAddr)
 			for i := 1; i <= *numPacket; i++ {
 
@@ -239,31 +237,35 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 				// generate dnstap message
 				dtquery, dtreply := GenerateDnstap(dnsquery, dnsreply)
 
-				// serialize to byte
-				data, err := proto.Marshal(dtquery)
-				if err != nil {
-					log.Fatalf("dnstap proto marshal error %s", err)
+				if !noQueries {
+					// serialize to byte
+					data, err := proto.Marshal(dtquery)
+					if err != nil {
+						log.Fatalf("dnstap proto marshal error %s", err)
+					}
+
+					// send query
+					frame.Write(data)
+					if err := fs.SendFrame(frame); err != nil {
+						log.Fatalf("send frame error %s", err)
+					}
+					count++
 				}
 
-				// send query
-				frame.Write(data)
-				if err := fs.SendFrame(frame); err != nil {
-					log.Fatalf("send frame error %s", err)
-				}
-				count++
+				if !noReplies {
+					// serialize to byte
+					data, err := proto.Marshal(dtreply)
+					if err != nil {
+						log.Fatalf("dnstap proto marshal error %s", err)
+					}
 
-				// serialize to byte
-				data, err = proto.Marshal(dtreply)
-				if err != nil {
-					log.Fatalf("dnstap proto marshal error %s", err)
+					// send reply
+					frame.Write(data)
+					if err := fs.SendFrame(frame); err != nil {
+						log.Fatalf("send frame error %s", err)
+					}
+					count++
 				}
-
-				// send reply
-				frame.Write(data)
-				if err := fs.SendFrame(frame); err != nil {
-					log.Fatalf("send frame error %s", err)
-				}
-				count++
 
 			}
 
@@ -291,6 +293,8 @@ func main() {
 	var remoteIp = flag.String("i", "127.0.0.1", "remote address of the dnstap receiver")
 	var remotePort = flag.Int("p", 6000, "remote port of the dnstap receiver")
 	var domainLength = flag.Int("d", 60, "domain length")
+	var noQueries = flag.Bool("noqueries", false, "don't send dnstap queries")
+	var noReplies = flag.Bool("noreplies", false, "don't send dnstap replies")
 
 	// Handle command-line arguments.
 	flag.Parse()
@@ -298,7 +302,7 @@ func main() {
 	var wg sync.WaitGroup
 	for i := 1; i <= *numConn; i++ {
 		wg.Add(1)
-		go Generator(&wg, remoteIp, remotePort, numPacket, domainLength)
+		go Generator(&wg, remoteIp, remotePort, numPacket, domainLength, *noQueries, *noReplies)
 	}
 	wg.Wait()
 
