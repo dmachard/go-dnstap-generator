@@ -213,7 +213,6 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 		log.Fatalf("error: %s", err)
 	}
 	if conn != nil {
-		fmt.Println("success - connected")
 
 		// frame stream library
 		r := bufio.NewReader(conn)
@@ -222,10 +221,13 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 		if err := fs.InitSender(); err != nil {
 			log.Fatalf("framestream init error: %s", err)
 		} else {
-			fmt.Println("framestream init success")
 
 			frame := &framestream.Frame{}
 
+			count := 0
+			start := time.Now()
+
+			fmt.Println("Sending dnstap packet to remote", remoteAddr)
 			for i := 1; i <= *numPacket; i++ {
 
 				// generate dns message
@@ -248,6 +250,7 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 				if err := fs.SendFrame(frame); err != nil {
 					log.Fatalf("send frame error %s", err)
 				}
+				count++
 
 				// serialize to byte
 				data, err = proto.Marshal(dtreply)
@@ -260,14 +263,22 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 				if err := fs.SendFrame(frame); err != nil {
 					log.Fatalf("send frame error %s", err)
 				}
+				count++
 
 			}
 
+			duration := time.Since(start)
+
+			// print stats
+			pps := float64(count) / duration.Seconds()
+			fmt.Println("=======")
+			fmt.Println("duration:", duration)
+			fmt.Println("packet sent:", count)
+			fmt.Println("pps:", pps)
+			fmt.Println("=======")
 		}
 
-		fmt.Printf("number of packet to send: %d\n", *numPacket)
 		conn.Close()
-		fmt.Println("closed")
 	}
 }
 
@@ -291,5 +302,4 @@ func main() {
 	}
 	wg.Wait()
 
-	fmt.Println("terminated")
 }
