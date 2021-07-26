@@ -19,6 +19,10 @@ Options:
         remote address of the dnstap receiver (default "127.0.0.1")
   -n int
         number of dnstap message to send (default 1)
+  -noqueries
+        don't send dnstap queries
+  -noreplies
+        don't send dnstap replies
   -p int
         remote port of the dnstap receiver (default 6000)
 ```
