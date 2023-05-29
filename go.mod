@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/dmachard/go-dnstap-protobuf v0.4.0
-	github.com/dmachard/go-framestream v0.2.0
+	github.com/dmachard/go-framestream v0.6.0
 	github.com/miekg/dns v1.1.52
 	google.golang.org/protobuf v1.30.0
 )
