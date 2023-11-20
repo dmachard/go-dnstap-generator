@@ -1,7 +1,7 @@
 github.com/dmachard/go-dnstap-protobuf v0.6.0 h1:L3t+IdUTehkt+Rste7f2QRf5PX9ECHGh1QIvtDsHzeg=
 github.com/dmachard/go-dnstap-protobuf v0.6.0/go.mod h1:GUKK5vMZTZW1gEtpSAdPeg8Egyn1p7pA1WE+FW+VW8I=
-github.com/dmachard/go-framestream v0.6.0 h1:H2DtbkXNIpM/PSuMN/DA1EDGGO5NhN/OBB2K9SkbA8c=
-github.com/dmachard/go-framestream v0.6.0/go.mod h1:f0LF2Npbe4plNgzVJX1rUfoIUjTWZIpLLyhuG04RTo4=
+github.com/dmachard/go-framestream v0.7.0 h1:fLwBLIBnG10wwGcS5y6qCoLg6WTD2yAxyezcAvpf61o=
+github.com/dmachard/go-framestream v0.7.0/go.mod h1:f0LF2Npbe4plNgzVJX1rUfoIUjTWZIpLLyhuG04RTo4=
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
 github.com/google/go-cmp v0.5.5 h1:Khx7svrCpmxxtHBq5j2mp/xVjsi8hQMfNLvJFAlrGgU=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
