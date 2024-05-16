@@ -1,7 +1,7 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dmachard/go-dnstap-protobuf v1.0.0 h1:I+3buchctfgtUcGU4QJIu7WGyltpH8Nv+Qwj0NRYoBA=
-github.com/dmachard/go-dnstap-protobuf v1.0.0/go.mod h1:/qjFCg+/6sZyGcL4d/cV2DyJbxqK7m2TwplyEd6C8TY=
+github.com/dmachard/go-dnstap-protobuf v1.0.1 h1:Fu5/SWpRzUPqLPmERw/6CoqcDlYSk5FGC7JzmIKz/F4=
+github.com/dmachard/go-dnstap-protobuf v1.0.1/go.mod h1:eU6ktwd2+GWAhorMaRSk3O9hMb8pI41uOKDSB08elOk=
 github.com/dmachard/go-framestream v0.10.0 h1:NzDOkpJOdrgV/c0XKCsVxijILbdTxsUcUlSwp4y34mw=
 github.com/dmachard/go-framestream v0.10.0/go.mod h1:CiSK1RmU/7hVsM/NhsroqpBxDH3meawKIXR8x8O+LP4=
 github.com/google/go-cmp v0.5.5 h1:Khx7svrCpmxxtHBq5j2mp/xVjsi8hQMfNLvJFAlrGgU=
