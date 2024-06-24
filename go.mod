@@ -3,7 +3,7 @@ module github.com/dmachard/go-dnstap-generator
 go 1.21
 
 require (
-	github.com/dmachard/go-dnstap-protobuf v1.0.1
+	github.com/dmachard/go-dnstap-protobuf v1.0.2
 	github.com/dmachard/go-framestream v0.10.0
 	github.com/miekg/dns v1.1.61
 	google.golang.org/protobuf v1.34.2
