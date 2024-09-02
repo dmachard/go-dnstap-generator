@@ -286,7 +286,7 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 
 func main() {
 
-	rand.Seed(time.Now().UnixNano())
+	rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	var numPacket = flag.Int("n", 1, "number of dnstap message to send")
 	var numConn = flag.Int("c", 1, "number of connection")
