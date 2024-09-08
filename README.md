@@ -1,14 +1,16 @@
 # go-dnstap-generator
 
-Dnstap random generator for testing purpose only.
+A tool for generating random dnstap messages, designed specifically for testing purposes.
 
 Command:
+
+To run the generator, use the following command:
 
 ```
 ./go-dnstap-generator -c 2 -n 1000000 -i 127.0.0.1
 ```
 
-Options:
+Here are the available options you can use:
 
 ```
   -c int
