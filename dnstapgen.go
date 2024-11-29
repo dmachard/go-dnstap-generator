@@ -88,8 +88,10 @@ func RandomItoa(min int, max int) string {
 	return strconv.Itoa(num)
 }
 
-func RandomString(n int) string {
+func RandomString(min int, max int) string {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+	n := RandomInt(min, max)
 
 	s := make([]rune, n)
 	for i := range s {
@@ -98,10 +100,10 @@ func RandomString(n int) string {
 	return string(s)
 }
 
-func GenerateDnsQuestion(domainLength *int) ([]byte, []byte, error) {
+func GenerateDnsQuestion(domainMinLength *int, domainMaxLength *int) ([]byte, []byte, error) {
 	dnsmsg := new(dns.Msg)
 
-	domain := RandomString(*domainLength)
+	domain := RandomString(*domainMinLength, *domainMaxLength)
 	qtype := DNSTYPE[RandomInt(0, 3)]
 
 	fqdn := fmt.Sprintf("%s.%s.", domain, TLD[RandomInt(0, 3)])
@@ -203,12 +205,12 @@ func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.D
 	return dt_query, dt_reply
 }
 
-func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket *int, domainLength *int, noQueries bool, noReplies bool) {
+func Generator(wg *sync.WaitGroup, transport string, remoteIp *string, remotePort *int, numPacket *int, domainMinLength *int, domainMaxLength *int, noQueries bool, noReplies bool) {
 	defer wg.Done()
 
 	// connect
 	remoteAddr := fmt.Sprintf("%s:%d", *remoteIp, *remotePort)
-	conn, err := net.Dial("tcp", remoteAddr)
+	conn, err := net.Dial(transport, remoteAddr)
 	if err != nil {
 		log.Fatalf("error: %s", err)
 	}
@@ -229,7 +231,7 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 			for i := 1; i <= *numPacket; i++ {
 
 				// generate dns message
-				dnsquery, dnsreply, err := GenerateDnsQuestion(domainLength)
+				dnsquery, dnsreply, err := GenerateDnsQuestion(domainMinLength, domainMaxLength)
 				if err != nil {
 					log.Fatalf("dns pack error %s", err)
 				}
@@ -290,9 +292,11 @@ func main() {
 
 	var numPacket = flag.Int("n", 1, "number of dnstap message to send")
 	var numConn = flag.Int("c", 1, "number of connection")
+	var transport = flag.String("t", "tcp", "transport to use")
 	var remoteIp = flag.String("i", "127.0.0.1", "remote address of the dnstap receiver")
 	var remotePort = flag.Int("p", 6000, "remote port of the dnstap receiver")
-	var domainLength = flag.Int("d", 60, "domain length")
+	var domainMaxLength = flag.Int("dmax", 60, "maximum domain length")
+	var domainMinLength = flag.Int("dmin", 10, "minimum domain length")
 	var noQueries = flag.Bool("noqueries", false, "don't send dnstap queries")
 	var noReplies = flag.Bool("noreplies", false, "don't send dnstap replies")
 
@@ -302,7 +306,7 @@ func main() {
 	var wg sync.WaitGroup
 	for i := 1; i <= *numConn; i++ {
 		wg.Add(1)
-		go Generator(&wg, remoteIp, remotePort, numPacket, domainLength, *noQueries, *noReplies)
+		go Generator(&wg, *transport, remoteIp, remotePort, numPacket, domainMinLength, domainMaxLength, *noQueries, *noReplies)
 	}
 	wg.Wait()
 
