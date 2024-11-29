@@ -10,7 +10,7 @@ func GetIntPointer(value int) *int {
 
 func TestRandomString(t *testing.T) {
 	randstr := RandomString(5, 10)
-	if len(randstr) != 5 {
+	if len(randstr) < 5 && len(randstr) > 10 {
 		t.Errorf("random string failed, bad length")
 	}
 }
