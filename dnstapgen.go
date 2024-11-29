@@ -51,6 +51,13 @@ var DNSTYPE_STR = map[uint16]string{
 	dns.TypeCNAME: "CNAME",
 }
 
+var QTYPE_STR = map[string]uint16{
+	"A":     dns.TypeA,
+	"AAAA":  dns.TypeAAAA,
+	"TXT":   dns.TypeTXT,
+	"CNAME": dns.TypeCNAME,
+}
+
 var DNSTYPE_VAL = map[uint16]string{
 	dns.TypeA:     "127.0.0.1",
 	dns.TypeAAAA:  "::1",
@@ -100,22 +107,36 @@ func RandomString(min int, max int) string {
 	return string(s)
 }
 
-func GenerateDnsQuestion(domainMinLength *int, domainMaxLength *int) ([]byte, []byte, error) {
+func GenerateDnsQuestion(domainMinLength *int, domainMaxLength *int, qname string, qtype string) ([]byte, []byte, error) {
 	dnsmsg := new(dns.Msg)
 
-	domain := RandomString(*domainMinLength, *domainMaxLength)
-	qtype := DNSTYPE[RandomInt(0, 3)]
+	var targetQname string
+	var targetQtype uint16
+	var targetQtypeStr string
 
-	fqdn := fmt.Sprintf("%s.%s.", domain, TLD[RandomInt(0, 3)])
+	if len(qname) > 0 {
+		targetQname = qname
+	} else {
+		randDomain := RandomString(*domainMinLength, *domainMaxLength)
+		targetQname = fmt.Sprintf("%s.%s.", randDomain, TLD[RandomInt(0, 3)])
+	}
 
-	dnsmsg.SetQuestion(fqdn, qtype)
+	if len(qname) > 0 {
+		targetQtype = QTYPE_STR[qtype]
+		targetQtypeStr = qtype
+	} else {
+		targetQtype = DNSTYPE[RandomInt(0, 3)]
+		targetQtypeStr = DNSTYPE_STR[targetQtype]
+	}
+
+	dnsmsg.SetQuestion(targetQname, targetQtype)
 
 	dnsquestion, err := dnsmsg.Pack()
 	if err != nil {
 		return nil, nil, errors.New("dns question pack error")
 	}
 
-	rr, err := dns.NewRR(fmt.Sprintf("%s %s %s", fqdn, DNSTYPE_STR[qtype], DNSTYPE_VAL[qtype]))
+	rr, err := dns.NewRR(fmt.Sprintf("%s %s %s", targetQname, targetQtypeStr, DNSTYPE_VAL[targetQtype]))
 	if err == nil {
 		dnsmsg.Answer = append(dnsmsg.Answer, rr)
 	}
@@ -205,7 +226,7 @@ func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.D
 	return dt_query, dt_reply
 }
 
-func Generator(wg *sync.WaitGroup, transport string, remoteIp *string, remotePort *int, numPacket *int, domainMinLength *int, domainMaxLength *int, noQueries bool, noReplies bool) {
+func Generator(wg *sync.WaitGroup, transport string, remoteIp *string, remotePort *int, numPacket *int, domainMinLength *int, domainMaxLength *int, qname, qtype string, noQueries bool, noReplies bool) {
 	defer wg.Done()
 
 	// connect
@@ -231,7 +252,7 @@ func Generator(wg *sync.WaitGroup, transport string, remoteIp *string, remotePor
 			for i := 1; i <= *numPacket; i++ {
 
 				// generate dns message
-				dnsquery, dnsreply, err := GenerateDnsQuestion(domainMinLength, domainMaxLength)
+				dnsquery, dnsreply, err := GenerateDnsQuestion(domainMinLength, domainMaxLength, qname, qtype)
 				if err != nil {
 					log.Fatalf("dns pack error %s", err)
 				}
@@ -297,6 +318,8 @@ func main() {
 	var remotePort = flag.Int("p", 6000, "remote port of the dnstap receiver")
 	var domainMaxLength = flag.Int("dmax", 60, "maximum domain length")
 	var domainMinLength = flag.Int("dmin", 10, "minimum domain length")
+	var qname = flag.String("qname", "", "qname to use")
+	var qtype = flag.String("qtype", "", "qtype to use")
 	var noQueries = flag.Bool("noqueries", false, "don't send dnstap queries")
 	var noReplies = flag.Bool("noreplies", false, "don't send dnstap replies")
 
@@ -306,7 +329,7 @@ func main() {
 	var wg sync.WaitGroup
 	for i := 1; i <= *numConn; i++ {
 		wg.Add(1)
-		go Generator(&wg, *transport, remoteIp, remotePort, numPacket, domainMinLength, domainMaxLength, *noQueries, *noReplies)
+		go Generator(&wg, *transport, remoteIp, remotePort, numPacket, domainMinLength, domainMaxLength, *qname, *qtype, *noQueries, *noReplies)
 	}
 	wg.Wait()
 
