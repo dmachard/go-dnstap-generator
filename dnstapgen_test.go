@@ -23,7 +23,7 @@ func TestGenerateDns(t *testing.T) {
 
 func TestGenerateDnstap(t *testing.T) {
 	qr, rp, _ := GenerateDnsQuestion(GetIntPointer(5), GetIntPointer(15), "", "")
-	dtqr, dtrp := GenerateDnstap(qr, rp)
+	dtqr, dtrp := GenerateDnstap(qr, rp, "")
 
 	if string(dtqr.GetIdentity()) != "dnstap-generator" {
 		t.Errorf("dnstap identity is invalid: %s", string(dtqr.GetIdentity()))
