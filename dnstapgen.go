@@ -51,6 +51,13 @@ var DNSTYPE_STR = map[uint16]string{
 	dns.TypeCNAME: "CNAME",
 }
 
+var QTYPE_STR = map[string]uint16{
+	"A":     dns.TypeA,
+	"AAAA":  dns.TypeAAAA,
+	"TXT":   dns.TypeTXT,
+	"CNAME": dns.TypeCNAME,
+}
+
 var DNSTYPE_VAL = map[uint16]string{
 	dns.TypeA:     "127.0.0.1",
 	dns.TypeAAAA:  "::1",
@@ -65,11 +72,25 @@ var DTYPEQR = map[int]dnstap.Message_Type{
 	3: dnstap.Message_AUTH_QUERY,
 }
 
+var QUERY_TYPE = map[string]dnstap.Message_Type{
+	"CLIENT":    dnstap.Message_CLIENT_QUERY,
+	"FORWARDER": dnstap.Message_FORWARDER_QUERY,
+	"RESOLVER":  dnstap.Message_RESOLVER_QUERY,
+	"AUTH":      dnstap.Message_AUTH_QUERY,
+}
+
 var DTYPERP = map[int]dnstap.Message_Type{
 	0: dnstap.Message_CLIENT_RESPONSE,
 	1: dnstap.Message_FORWARDER_RESPONSE,
 	2: dnstap.Message_RESOLVER_RESPONSE,
 	3: dnstap.Message_AUTH_RESPONSE,
+}
+
+var REPLY_TYPE = map[string]dnstap.Message_Type{
+	"CLIENT":    dnstap.Message_CLIENT_RESPONSE,
+	"FORWARDER": dnstap.Message_FORWARDER_RESPONSE,
+	"RESOLVER":  dnstap.Message_RESOLVER_RESPONSE,
+	"AUTH":      dnstap.Message_AUTH_RESPONSE,
 }
 
 var RCODES = map[int]int{
@@ -88,8 +109,10 @@ func RandomItoa(min int, max int) string {
 	return strconv.Itoa(num)
 }
 
-func RandomString(n int) string {
+func RandomString(min int, max int) string {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+	n := RandomInt(min, max)
 
 	s := make([]rune, n)
 	for i := range s {
@@ -98,22 +121,36 @@ func RandomString(n int) string {
 	return string(s)
 }
 
-func GenerateDnsQuestion(domainLength *int) ([]byte, []byte, error) {
+func GenerateDnsQuestion(domainMinLength *int, domainMaxLength *int, qname string, qtype string) ([]byte, []byte, error) {
 	dnsmsg := new(dns.Msg)
 
-	domain := RandomString(*domainLength)
-	qtype := DNSTYPE[RandomInt(0, 3)]
+	var targetQname string
+	var targetQtype uint16
+	var targetQtypeStr string
 
-	fqdn := fmt.Sprintf("%s.%s.", domain, TLD[RandomInt(0, 3)])
+	if len(qname) > 0 {
+		targetQname = fmt.Sprintf("%s.", qname)
+	} else {
+		randDomain := RandomString(*domainMinLength, *domainMaxLength)
+		targetQname = fmt.Sprintf("%s.%s.", randDomain, TLD[RandomInt(0, 3)])
+	}
 
-	dnsmsg.SetQuestion(fqdn, qtype)
+	if len(qtype) > 0 {
+		targetQtype = QTYPE_STR[qtype]
+		targetQtypeStr = qtype
+	} else {
+		targetQtype = DNSTYPE[RandomInt(0, 3)]
+		targetQtypeStr = DNSTYPE_STR[targetQtype]
+	}
+
+	dnsmsg.SetQuestion(targetQname, targetQtype)
 
 	dnsquestion, err := dnsmsg.Pack()
 	if err != nil {
 		return nil, nil, errors.New("dns question pack error")
 	}
 
-	rr, err := dns.NewRR(fmt.Sprintf("%s %s %s", fqdn, DNSTYPE_STR[qtype], DNSTYPE_VAL[qtype]))
+	rr, err := dns.NewRR(fmt.Sprintf("%s %s %s", targetQname, targetQtypeStr, DNSTYPE_VAL[targetQtype]))
 	if err == nil {
 		dnsmsg.Answer = append(dnsmsg.Answer, rr)
 	}
@@ -126,7 +163,7 @@ func GenerateDnsQuestion(domainLength *int) ([]byte, []byte, error) {
 	return dnsquestion, dnsanswer, nil
 }
 
-func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.Dnstap) {
+func GenerateDnstap(dnsquery []byte, dnsreply []byte, qrtype string) (*dnstap.Dnstap, *dnstap.Dnstap) {
 
 	//prepare dnstap query
 	dt_query := &dnstap.Dnstap{}
@@ -139,7 +176,12 @@ func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.D
 	mtId := RandomInt(0, 3)
 
 	now := time.Now()
-	mt := DTYPEQR[mtId]
+	var mt dnstap.Message_Type
+	if len(qrtype) > 0 {
+		mt = QUERY_TYPE[qrtype]
+	} else {
+		mt = DTYPEQR[mtId]
+	}
 	sf := SF[RandomInt(0, 1)]
 	sp := SP[RandomInt(0, 3)]
 
@@ -181,7 +223,12 @@ func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.D
 	dt_reply.Type = &t
 
 	now_reply := time.Now()
-	mt_reply := DTYPERP[mtId]
+	var mt_reply dnstap.Message_Type
+	if len(qrtype) > 0 {
+		mt_reply = REPLY_TYPE[qrtype]
+	} else {
+		mt_reply = DTYPERP[mtId]
+	}
 
 	tsec_reply := uint64(now_reply.Unix())
 	tnsec_reply := uint32(uint64(now_reply.UnixNano()) - uint64(now_reply.Unix())*1e9)
@@ -203,12 +250,12 @@ func GenerateDnstap(dnsquery []byte, dnsreply []byte) (*dnstap.Dnstap, *dnstap.D
 	return dt_query, dt_reply
 }
 
-func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket *int, domainLength *int, noQueries bool, noReplies bool) {
+func Generator(wg *sync.WaitGroup, transport string, remoteIp *string, remotePort *int, numPacket *int, domainMinLength *int, domainMaxLength *int, qname, qtype, qrtype string, noQueries bool, noReplies bool) {
 	defer wg.Done()
 
 	// connect
 	remoteAddr := fmt.Sprintf("%s:%d", *remoteIp, *remotePort)
-	conn, err := net.Dial("tcp", remoteAddr)
+	conn, err := net.Dial(transport, remoteAddr)
 	if err != nil {
 		log.Fatalf("error: %s", err)
 	}
@@ -229,13 +276,13 @@ func Generator(wg *sync.WaitGroup, remoteIp *string, remotePort *int, numPacket 
 			for i := 1; i <= *numPacket; i++ {
 
 				// generate dns message
-				dnsquery, dnsreply, err := GenerateDnsQuestion(domainLength)
+				dnsquery, dnsreply, err := GenerateDnsQuestion(domainMinLength, domainMaxLength, qname, qtype)
 				if err != nil {
 					log.Fatalf("dns pack error %s", err)
 				}
 
 				// generate dnstap message
-				dtquery, dtreply := GenerateDnstap(dnsquery, dnsreply)
+				dtquery, dtreply := GenerateDnstap(dnsquery, dnsreply, qrtype)
 
 				if !noQueries {
 					// serialize to byte
@@ -290,9 +337,14 @@ func main() {
 
 	var numPacket = flag.Int("n", 1, "number of dnstap message to send")
 	var numConn = flag.Int("c", 1, "number of connection")
+	var transport = flag.String("t", "tcp", "transport to use")
 	var remoteIp = flag.String("i", "127.0.0.1", "remote address of the dnstap receiver")
 	var remotePort = flag.Int("p", 6000, "remote port of the dnstap receiver")
-	var domainLength = flag.Int("d", 60, "domain length")
+	var domainMaxLength = flag.Int("dmax", 60, "maximum domain length")
+	var domainMinLength = flag.Int("dmin", 10, "minimum domain length")
+	var qname = flag.String("qname", "", "specific qname to use")
+	var qtype = flag.String("qtype", "", "specific qtype to use (A, AAAA, CNAME, TXT)")
+	var qrtype = flag.String("qrtype", "", "type of query and response (CLIENT, FORWARDER, RESOLVER, AUTH)")
 	var noQueries = flag.Bool("noqueries", false, "don't send dnstap queries")
 	var noReplies = flag.Bool("noreplies", false, "don't send dnstap replies")
 
@@ -302,7 +354,7 @@ func main() {
 	var wg sync.WaitGroup
 	for i := 1; i <= *numConn; i++ {
 		wg.Add(1)
-		go Generator(&wg, remoteIp, remotePort, numPacket, domainLength, *noQueries, *noReplies)
+		go Generator(&wg, *transport, remoteIp, remotePort, numPacket, domainMinLength, domainMaxLength, *qname, *qtype, *qrtype, *noQueries, *noReplies)
 	}
 	wg.Wait()
 

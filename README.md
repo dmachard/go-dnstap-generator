@@ -13,10 +13,13 @@ To run the generator, use the following command:
 Here are the available options you can use:
 
 ```
+Usage of go-dnstap-generator:
   -c int
         number of connection (default 1)
-  -d int
-        domain length (default 60)
+  -dmax int
+        maximum domain length (default 60)
+  -dmin int
+        minimum domain length (default 10)
   -i string
         remote address of the dnstap receiver (default "127.0.0.1")
   -n int
@@ -27,4 +30,12 @@ Here are the available options you can use:
         don't send dnstap replies
   -p int
         remote port of the dnstap receiver (default 6000)
+  -qname string
+        specific qname to use
+  -qtype string
+        specific qtype to use (A, AAAA, CNAME, TXT)
+  -qrtype string
+        type of query and response (CLIENT, FORWARDER, RESOLVER, AUTH)
+  -t string
+        transport to use (default "tcp"), expected values: tcp, unix
 ```
