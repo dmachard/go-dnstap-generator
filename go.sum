@@ -2,8 +2,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dmachard/go-dnstap-protobuf v1.3.0 h1:Tvxnb22Y9gibwlIzBQ0qWBQ6BNynVzHBYAPebrvAECM=
 github.com/dmachard/go-dnstap-protobuf v1.3.0/go.mod h1:AlVew99KX/IX+NG1O4vJf/Wl4+K+TdakOujRuBjc+1E=
-github.com/dmachard/go-framestream v1.0.1 h1:/v93w0No5g+CTdwhlbiLbopvnKUdc9kDscKy+xPT4wU=
-github.com/dmachard/go-framestream v1.0.1/go.mod h1:p0gyuQSA4IfiyyhSy2grFc1oR8Tk5ewNvTMcQHzcnGs=
+github.com/dmachard/go-framestream v1.2.0 h1:EbGcW6FbTAOIQbLR9WuwPaPFEnod80I4gIRTC7Xv3PA=
+github.com/dmachard/go-framestream v1.2.0/go.mod h1:tbKZ8qdeW+q5J1PjDPRaIoRdgWM/6th0ysE2J6rrtsU=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/klauspost/compress v1.15.9 h1:wKRjX6JRtDdrE9qwa4b/Cip7ACOshUI4smpCQanqjSY=
